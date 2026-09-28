@@ -1,5 +1,6 @@
 const clean = v => String(v || '').trim().replace(/^['"]+|['"]+$/g, '').trim();
-const KEY = clean(process.env.GOOGLE_API_KEY) || 'AIzaSyA1uAm6CruceiwSNW2-TbmOuJr8rlYRSxU';
+const KEY = clean(process.env.GOOGLE_API_KEY);
+if (!KEY) throw new Error('GOOGLE_API_KEY não configurada nas variáveis de ambiente da Vercel');
 const RAW_ROOT = clean(process.env.DRIVE_FOLDER_ID) || '1hjZJdIQ4Q4SBQcH6xFhxDdUm6Hw8z530';
 const ROOT = (RAW_ROOT.match(/folders\/([\w-]+)/) || RAW_ROOT.match(/[?&]id=([\w-]+)/) || [null, RAW_ROOT])[1];
 const FOLDER = 'application/vnd.google-apps.folder';

@@ -75,6 +75,19 @@ a:hover{opacity:0.8}
         <span>Total</span><span>{{ cartTotalLabel }}</span>
       </div>
       <a href="{{ cartWaHref }}" target="_blank" rel="noopener" style="display:block;text-align:center;padding:14px;background:var(--accent);color:#fff;border-radius:2px;font-size:14px;letter-spacing:1px">Enviar pedido no WhatsApp</a>
+      <sc-if value="{{ confirmClear }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px;font-size:13px">
+          <span style="color:oklch(0.4 0.02 60)">Esvaziar a lista?</span>
+          <button onClick="{{ clearCart }}" style="background:oklch(0.5 0.14 25);color:#fff;border:none;border-radius:999px;padding:9px 16px;font:inherit;font-size:13px;cursor:pointer">Sim, esvaziar</button>
+          <button onClick="{{ cancelClear }}" style="background:none;border:1px solid oklch(0.82 0.02 70);border-radius:999px;padding:8px 14px;font:inherit;font-size:13px;cursor:pointer;color:inherit">Cancelar</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{ notConfirmClear }}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{ askClear }}" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:10px;padding:12px;background:none;border:none;font:inherit;font-size:13px;color:oklch(0.45 0.02 60);cursor:pointer">
+          <span aria-hidden="true" style="position:relative;width:12px;height:13px;border:1.5px solid currentColor;border-top:none;border-radius:0 0 2px 2px;margin-top:3px"><span style="position:absolute;left:-4px;right:-4px;top:-3px;height:1.5px;background:currentColor"></span><span style="position:absolute;left:2px;right:2px;top:-6px;height:3px;border:1.5px solid currentColor;border-bottom:none;border-radius:2px 2px 0 0"></span></span>
+          Esvaziar lista
+        </button>
+      </sc-if>
     </div>
   </sc-if>
 </div>
@@ -129,11 +142,11 @@ a:hover{opacity:0.8}
   </div>
 </sc-if>
 
-<section id="inicio" style="position:relative;width:100%;height:min(88vh,760px);min-height:440px">
-  <img src="./assets/hero.png" alt="Joias Madah" fetchpriority="high" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:#E6D8C8">
+<section id="inicio" style="position:relative;width:100%;height:min(88vh,760px);min-height:440px;overflow:hidden">
+  <img ref="{{ heroImgRef }}" src="./assets/hero.jpg" alt="Joias Madah" fetchpriority="high" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:#E6D8C8">
   <div style="position:absolute;inset:0;background:linear-gradient(to top, oklch(0.15 0.01 60 / 0.85), oklch(0.15 0.01 60 / 0.55) 45%, oklch(0.15 0.01 60 / 0.1) 85%);pointer-events:none"></div>
   <div style="position:absolute;left:0;right:0;bottom:0;padding:0 24px clamp(28px,6vw,52px)">
-    <div style="max-width:1280px;margin:0 auto;color:oklch(0.98 0.005 80)">
+    <div ref="{{ heroTextRef }}" style="max-width:1280px;margin:0 auto;color:oklch(0.98 0.005 80)">
       <p style="margin:0 0 8px;font-size:12px;letter-spacing:3px;text-transform:uppercase;opacity:0.85">Nova coleção</p>
       <h1 style="margin:0 0 12px;font-family:'Cormorant Garamond',serif;font-weight:600;font-size:clamp(34px,7vw,64px);line-height:1.05;max-width:560px">Peças que contam a sua história</h1>
       <p style="margin:0 0 20px;font-size:clamp(14px,2vw,16px);max-width:420px;opacity:0.92">Semijoias escolhidas para acompanhar você, expressar seu estilo e tornar cada momento ainda mais especial.</p>
@@ -300,7 +313,27 @@ class Component extends DCLogic {
 
   loadCart() { try { return JSON.parse(localStorage.getItem('madah-cart')) || {}; } catch (e) { return {}; } }
 
+  heroImgRef = React.createRef();
+  heroTextRef = React.createRef();
+  startHeroMotion() {
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const img = this.heroImgRef.current, txt = this.heroTextRef.current;
+    if (img && img.animate) {
+      img.style.willChange = 'transform';
+      this.heroAnim = img.animate(
+        [{ transform: 'scale(1) translate3d(0,0,0)' }, { transform: 'scale(1.12) translate3d(-1.5%,-1%,0)' }],
+        { duration: 14000, easing: 'ease-in-out', iterations: Infinity, direction: 'alternate' }
+      );
+    }
+    if (txt && txt.animate) {
+      [...txt.children].forEach((el, i) => el.animate(
+        [{ opacity: 0, transform: 'translateY(18px)' }, { opacity: getComputedStyle(el).opacity, transform: 'none' }],
+        { duration: 900, delay: 250 + i * 160, easing: 'cubic-bezier(.2,.7,.2,1)', fill: 'backwards' }
+      ));
+    }
+  }
   componentDidMount() {
+    this.startHeroMotion();
     window.addEventListener('keydown', this.onKey);
     this.tTimer = setInterval(() => {
       if (Date.now() < this.pauseUntil) return;
@@ -390,12 +423,15 @@ class Component extends DCLogic {
     if (e.key === 'ArrowLeft') this.moveViewer(-1);
     if (e.key === 'ArrowRight') this.moveViewer(1);
   };
-  componentWillUnmount() { clearInterval(this.tTimer); window.removeEventListener('keydown', this.onKey); document.body.style.overflow = ''; }
+  componentWillUnmount() { this.heroAnim && this.heroAnim.cancel(); clearInterval(this.tTimer); window.removeEventListener('keydown', this.onKey); document.body.style.overflow = ''; }
 
   toggleMenu = () => this.setState(s => ({ menuOpen: !s.menuOpen }));
   closeMenu = () => this.setState({ menuOpen: false });
   toggleCart = () => this.setState(s => ({ cartOpen: !s.cartOpen }));
-  closeCart = () => this.setState({ cartOpen: false });
+  closeCart = () => this.setState({ cartOpen: false, confirmClear: false });
+  askClear = () => this.setState({ confirmClear: true });
+  cancelClear = () => this.setState({ confirmClear: false });
+  clearCart = () => this.setState({ cart: this.saveCart({}), confirmClear: false });
 
   addToCart = (id) => this.setState(s => ({ cart: this.saveCart({ ...s.cart, [id]: (s.cart[id] || 0) + 1 }) }));
   decQty = (id) => this.setState(s => {
@@ -560,7 +596,14 @@ class Component extends DCLogic {
       vTouchStart: this.vTouchStart,
       vTouchEnd: this.vTouchEnd,
       toggleCart: this.toggleCart,
+      heroImgRef: this.heroImgRef,
+      heroTextRef: this.heroTextRef,
       closeCart: this.closeCart,
+      confirmClear: !!this.state.confirmClear,
+      notConfirmClear: !this.state.confirmClear,
+      askClear: this.askClear,
+      cancelClear: this.cancelClear,
+      clearCart: this.clearCart,
       cartOpen: this.state.cartOpen,
       cartHasItems: cartItems.length > 0,
       cartEmpty: cartItems.length === 0,
